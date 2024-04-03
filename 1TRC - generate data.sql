@@ -20,6 +20,8 @@ create schema if not exists 1trc;
 -- COMMAND ----------
 
 -- DBTITLE 1,Stations Data Creation Using values()
+drop table if exists `1trc`.`stations`;
+
 /* Create stations data using values() */
 create or replace table `1trc`.`stations`
 using delta
@@ -31,6 +33,8 @@ from values (1,'Abha',18.0), (2,'Abidjan',26.0), (3,'Abéché',29.4), (4,'Accra'
 -- COMMAND ----------
 
 -- DBTITLE 1,Stations Data Creation Using CTAS
+drop table if exists `1brc`.`stations`;
+
 create or replace table `1brc`.`stations`
 using delta
 as
@@ -49,6 +53,8 @@ select * from `1trc`.`stations`;
 -- COMMAND ----------
 
 -- DBTITLE 1,Generate 1 Billion Normal Distribution Samples
+drop table if exists `1brc`.`measurements_delta`;
+
 /* Generate new samples with a normal distribution using Phil Factors's classic solution:
    https://www.red-gate.com/simple-talk/blogs/getting-normally-distributed-random-numbers-in-tsql/  */
 create or replace table `1brc`.`measurements_delta`
@@ -65,7 +71,7 @@ join (range(1000000000)) b on a.id = (mod(b.id, 412)+1)
 
 -- DBTITLE 1,Describe Table History
 describe history `1brc`.`measurements_delta`;
---{"numFiles": "256", "numOutputRows": "1000000000", "numOutputBytes": "1379976408"}
+--{"numFiles": "448", "numOutputRows": "1000000000", "numOutputBytes": "1345222850"}
 
 -- COMMAND ----------
 
@@ -82,6 +88,8 @@ vacuum `1brc`.`measurements_delta` RETAIN 0 HOURS;
 -- COMMAND ----------
 
 -- DBTITLE 1,Generate 1 Billion Normal Distribution Samples - CTAS
+drop table if exists `1brc`.`measurements_delta_partitioned`;
+
 create or replace table `1brc`.`measurements_delta_partitioned`
 partitioned by (station)
 as
@@ -111,64 +119,13 @@ join (range(1000000000)) b on a.id = (mod(b.id, 412)+1)
 
 -- DBTITLE 1,Describe Table History
 describe history `1brc`.`measurements_delta_partitioned`;
---{"numFiles": "105472", "numOutputRows": "1000000000", "numOutputBytes": "1300546415"}
+--{"numFiles": "412", "numOutputRows": "1000000000", "numOutputBytes": "1128010546"}
 
 -- COMMAND ----------
 
 -- DBTITLE 1,Vacuum Delta Table - Retain No History
 set spark.databricks.delta.retentionDurationCheck.enabled = false;
 vacuum `1brc`.`measurements_delta_partitioned` RETAIN 0 HOURS;
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC ## Test Queries
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC ### Non-partitioned Table
-
--- COMMAND ----------
-
--- DBTITLE 1,Run 1BRC Query - cold run
-SET use_cached_result=false;
-SELECT station, min(measure), max(measure), mean(measure)
-FROM `1brc`.`measurements_delta`
-GROUP BY station
-ORDER BY station;
-
--- COMMAND ----------
-
--- DBTITLE 1,Run 1BRC Query - warm run
-SET use_cached_result=false;
-SELECT station, min(measure), max(measure), mean(measure)
-FROM `1brc`.`measurements_delta`
-GROUP BY station
-ORDER BY station;
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC ### Partitioned Table
-
--- COMMAND ----------
-
--- DBTITLE 1,Run 1BRC Query - cold run
-SET use_cached_result=false;
-SELECT station, min(measure), max(measure), mean(measure)
-FROM `1brc`.`measurements_delta_partitioned`
-GROUP BY station
-ORDER BY station;
-
--- COMMAND ----------
-
--- DBTITLE 1,Run 1BRC Query - warm run
-SET use_cached_result=false;
-SELECT station, min(measure), max(measure), mean(measure)
-FROM `1brc`.`measurements_delta_partitioned`
-GROUP BY station
-ORDER BY station;
 
 -- COMMAND ----------
 
@@ -183,6 +140,8 @@ ORDER BY station;
 -- COMMAND ----------
 
 -- DBTITLE 1,Generate 1 Trillion Normal Distribution Samples
+drop table if exists `1trc`.`measurements_delta`;
+
 /* Generate new samples with a normal distribution using Phil Factors's classic solution:
    https://www.red-gate.com/simple-talk/blogs/getting-normally-distributed-random-numbers-in-tsql/  */
 create or replace table `1trc`.`measurements_delta`
@@ -200,6 +159,8 @@ join (range(1000000000000)) b on a.id = (mod(b.id, 412)+1)
 -- DBTITLE 1,Describe Table History
 describe history `1trc`.`measurements_delta`;
 -- {"numFiles": "256", "numOutputRows": "1000000000000", "numOutputBytes": "1378906028507"}
+-- DBSQL 2XL {"numFiles": "448", "numOutputRows": "1000000000000", "numOutputBytes": "1341928982163"}
+
 
 -- COMMAND ----------
 
@@ -216,6 +177,8 @@ vacuum `1trc`.`measurements_delta` RETAIN 0 HOURS;
 -- COMMAND ----------
 
 -- DBTITLE 1,Generate 1 Trillion Normal Distribution Samples as CTAS
+drop table if exists `1trc`.`measurements_delta_partitioned`;
+
 create or replace table `1trc`.`measurements_delta_partitioned`
 partitioned by (station)
 as
@@ -246,9 +209,9 @@ join (range(1000000000000)) b on a.id = (mod(b.id, 412)+1)
 -- DBTITLE 1,Describe Table History
 describe history `1trc`.`measurements_delta_partitioned`;
 -- { /* Original */
---   "numFiles": "207648",
+--   "numFiles": "7992",
 --   "numOutputRows": "1000000000000",
---   "numOutputBytes": "1127626491323"
+--   "numOutputBytes": "1127312838692"
 -- }
 
 -- COMMAND ----------
@@ -256,60 +219,3 @@ describe history `1trc`.`measurements_delta_partitioned`;
 -- DBTITLE 1,Vacuum Delta Table - Retain No History
 set spark.databricks.delta.retentionDurationCheck.enabled = false;
 vacuum `1trc`.`measurements_delta_partitined` RETAIN 0 HOURS;
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC ## Test Queries
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC ### Non-partitioned table
-
--- COMMAND ----------
-
--- DBTITLE 1,Run 1TRC Query - cold run
-SET use_cached_result=false;
-SELECT station, min(measure), max(measure), mean(measure)
-FROM `1trc`.`measurements_delta`
-GROUP BY station
-ORDER BY station;
-
--- COMMAND ----------
-
--- DBTITLE 1,Run 1TRC Query - warm run
-SET use_cached_result=false;
-SELECT station, min(measure), max(measure), mean(measure)
-FROM `1trc`.`measurements_delta`
-GROUP BY station
-ORDER BY station;
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC ### Partitioned table
-
--- COMMAND ----------
-
--- DBTITLE 1,Run 1TRC Query - cold run
-SET use_cached_result=false;
-SELECT station, min(measure), max(measure), mean(measure)
-FROM `1trc`.`measurements_delta_partitioned`
-GROUP BY station
-ORDER BY station;
-
--- COMMAND ----------
-
--- DBTITLE 1,Run 1TRC Query - warm run
-SET use_cached_result=false;
-SELECT station, min(measure), max(measure), mean(measure)
-FROM `1trc`.`measurements_delta_partitioned`
-GROUP BY station
-ORDER BY station;
-
--- COMMAND ----------
-
--- Cold | 64w | 412 rows | 1.20 minutes runtime
--- Warm | 64w | 412 rows | 54.74 seconds runtime
--- Warm | 64w | 412 rows | 53.96 seconds runtime
